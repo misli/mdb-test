@@ -18,6 +18,7 @@ done; wait
 for LOG in $(find $LOGS -name build.log); do
     {
         ARCH=$(egrep '^Building for target' $LOG | tail -1 | sed 's/.* //')
+        echo >&2 "Processing log $LOG for arch $ARCH"
         mkdir -p "$RESULTS/$ARCH"
         while read LINE; do
             [[ "$LINE" =~ \[\ fail\ \]$ ]] || continue
