@@ -8,8 +8,8 @@ if [[ "$NVR" =~ ^(|-h|--help)$ ]]; then
     exit 0
 fi
 
-LOGS="$PWD/$NVR-logs"
-RESULTS="$PWD/$NVR-results"
+LOGS="$PWD/$NVR/logs"
+RESULTS="$PWD/$NVR/results"
 
 for koji in {,{arm,ppc,s390}-}koji; do
     $koji download-logs -c --recurse --dir=$LOGS --match=build.log --nvr $NVR &
