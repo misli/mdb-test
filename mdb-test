@@ -1,0 +1,31 @@
+#!/bin/bash
+
+NVR="$1"
+
+if [[ "$NVR" =~ ^(|-h|--help)$ ]]; then
+    echo -e "Usage:"
+    echo -e "\t$0 <nvr>"
+    exit 0
+fi
+
+LOGS="$PWD/$NVR-logs"
+RESULTS="$PWD/$NVR-results"
+
+for koji in {,{arm,ppc,s390}-}koji; do
+    $koji download-logs -c --recurse --dir=$LOGS --match=build.log --nvr $NVR &
+done; wait
+
+for LOG in $(find $LOGS -name build.log); do
+    {
+        ARCH=$(egrep '^Building for target' $LOG | tail -1 | sed 's/.* //')
+        mkdir -p "$RESULTS/$ARCH"
+        while read LINE; do
+            [[ "$LINE" =~ \[\ fail\ \]$ ]] || continue
+            TEST=${LINE/ */}
+            while ! [[ "$LINE" =~ \[\ pass\ \] ]]; do
+                echo "$LINE"
+                read LINE
+            done > "$RESULTS/$ARCH/$TEST"
+        done < $LOG
+    } &
+done; wait
