@@ -23,7 +23,7 @@ for LOG in $(find $LOGS -name build.log); do
         while read LINE; do
             [[ "$LINE" =~ \[\ fail\ \]$ ]] || continue
             TEST=${LINE/ */}
-            while ! [[ "$LINE" =~ the\ logfile\ can\ be\ found\ in ]]; do
+            while ! [[ "$LINE" =~ ^\ -\  ]]; do
                 echo "$LINE"
                 read LINE || break
             done > "$RESULTS/$ARCH/$TEST"
