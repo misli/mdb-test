@@ -1,32 +1,45 @@
 #!/bin/bash
 
-NVR="$1"
+ID="${1}"
 
-if [[ "$NVR" =~ ^(|-h|--help)$ ]]; then
+if [[ "${ID}" =~ ^(|-h|--help)$ ]]; then
     echo -e "Usage:"
-    echo -e "\t$0 <nvr>"
+    echo -e "\t${0} <task-id> | <nvr>"
     exit 0
 fi
 
-LOGS="$PWD/$NVR/logs"
-RESULTS="$PWD/$NVR/results"
+LOGS="${PWD}/${ID}"
 
-for koji in {,{arm,ppc,s390}-}koji brew; do
-    $koji download-logs -c --recurse --dir=$LOGS --match=build.log --nvr $NVR &
-done; wait
+if [[ "${ID}" =~ ^[0-9]+$ ]]; then
+    ID_OPT="${ID}"
+else
+    ID_OPT="--nvr ${ID}"
+fi
 
-for LOG in $(find $LOGS -name build.log); do
+if [[ "$0" =~ brew- ]]; then
+    koji=brew
+else
+    koji=$(echo "$0" | egrep -o '(arm|s390|ppc)-')koji
+fi
+
+$koji download-logs -c --recurse --dir=${LOGS} --match=build.log ${ID_OPT}
+
+for LOG in $(find ${LOGS} -name build.log); do
     {
-        ARCH=$(egrep '^Building for target' $LOG | tail -1 | sed 's/.* //')
-        echo >&2 "Processing log $LOG for arch $ARCH"
-        mkdir -p "$RESULTS/$ARCH"
+        export IFS=""
+        NVR=$(egrep -m1 '^Wrote:' ${LOG} | sed -e 's|.*/||' -e 's|.src.rpm||')
+        ARCH=$(egrep -m1 '^Building for target' ${LOG} | sed 's/.* //')
+        OUTDIR="${NVR}-${ID}/${ARCH}"
+        echo >&2 "Processing log ${LOG} for arch ${ARCH}"
+        mkdir -p "${OUTDIR}"
         while read LINE; do
-            [[ "$LINE" =~ \[\ fail\ \]$ ]] || continue
+            [[ "${LINE}" =~ \[\ fail\ \]$ ]] || continue
             TEST=${LINE/ */}
-            while ! [[ "$LINE" =~ ^\ -\  ]]; do
-                echo "$LINE"
+            while ! [[ "${LINE}" =~ ^\ -\  ]]; do
+                echo "${LINE}"
                 read LINE || break
-            done > "$RESULTS/$ARCH/$TEST"
-        done < $LOG
+            done > "${OUTDIR}/${TEST}"
+        done < ${LOG}
     } &
 done; wait
+
